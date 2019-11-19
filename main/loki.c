@@ -44,7 +44,7 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt) {
 }
 
 void send_data_task(void *arg) {
-  int len = 0;
+  int len, read_len, status = 0;
   BaseType_t xStatus;
   while(1){
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
@@ -63,7 +63,6 @@ void send_data_task(void *arg) {
       //     }
       //   ]
       // }
-      ESP_LOGI(TAG, "Preparing loki msg");
       sprintf(post_buff, "{\"streams\": [{\"stream\": {\"emitter\": \"" EMITTER_LABEL "\", \"job\": \"" JOB_LABEL "\"");
       for (int i = 0; i < LABELS_NUM; i++) {
         if (in_frame.labels[i][0] != '\0') {
@@ -88,9 +87,14 @@ void send_data_task(void *arg) {
       esp_http_client_open(client, len);
       esp_http_client_write(client, post_buff, len);
       len = esp_http_client_fetch_headers(client);
-      ESP_LOGI(TAG, "Status = %d, content_length = %d",
-           esp_http_client_get_status_code(client),
-           esp_http_client_get_content_length(client));
+      status = esp_http_client_get_status_code(client);
+      if (status != 204) {
+        read_len = esp_http_client_read(client, post_buff, len);
+        post_buff[read_len] = '\0';
+        ESP_LOGE(TAG, "%d: %s", status, read_len > 0 ? post_buff:"error");
+      } else {
+        ESP_LOGD(TAG, "Status = %d", status);
+      }
       esp_http_client_cleanup(client);
     }
   }
