@@ -44,6 +44,14 @@ static void uart_event_task(void *pvParameters) {
             while(ptr != NULL) {
               if (strlen(ptr)) {
                 strcpy(out_line.log_line, ptr);
+                if (strchr("VDIWE", ptr[0]) && ptr[1] == ' ' && ptr[2] == '(') {
+                  strcpy(out_line.labels[0], "level");
+                  if (ptr[0] == 'E') strcpy(out_line.labels[0 + LABELS_NUM], "error");
+                  else if (ptr[0] == 'W') strcpy(out_line.labels[0 + LABELS_NUM], "warning");
+                  else if (ptr[0] == 'I') strcpy(out_line.labels[0 + LABELS_NUM], "info");
+                  else if (ptr[0] == 'D') strcpy(out_line.labels[0 + LABELS_NUM], "debug");
+                  else if (ptr[0] == 'V') strcpy(out_line.labels[0 + LABELS_NUM], "verbose");
+                }
                 xQueueSendToBack(data0_queue, &out_line, 0);
               }
               ptr = strtok(NULL, delim);
