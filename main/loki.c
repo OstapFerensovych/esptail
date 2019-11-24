@@ -6,6 +6,7 @@
 #include "esp_log.h"
 
 #include <string.h>
+#include <time.h>
 
 static const char *TAG = "loki";
 static const char *stream_header = "{\"stream\": {\"emitter\": \"" EMITTER_LABEL "\", \"job\": \"" JOB_LABEL "\"";
@@ -73,7 +74,11 @@ void send_data(char *post_buff) {
 }
 
 void send_data_task(void *arg) {
+  unsigned int log_line_cnt = 0;
+  time_t now, prev_now;
   BaseType_t xStatus;
+  sprintf(post_buff, "{\"streams\": [%s", stream_header);
+  time(&prev_now);
   while(1){
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
     if(xStatus == pdPASS) {
@@ -91,7 +96,11 @@ void send_data_task(void *arg) {
       //     }
       //   ]
       // }
-      sprintf(post_buff, "{\"streams\": [%s", stream_header);
+      if (log_line_cnt) {
+        strcat(post_buff, ", ");
+        strcat(post_buff, stream_header);
+      }
+      log_line_cnt++;
       for (int i = 0; i < LABELS_NUM; i++) {
         if (in_frame.labels[i][0] != '\0') {
           sprintf(entry_buff, ", \"%s\": \"%s\"", in_frame.labels[i], in_frame.labels[i + LABELS_NUM]);
@@ -99,13 +108,19 @@ void send_data_task(void *arg) {
         }
       }
       strcat(post_buff, stream_values_header);
-      sprintf(entry_buff, "\"%ld%ld000\", \"", in_frame.tv.tv_sec, in_frame.tv.tv_usec);
+      sprintf(entry_buff, "\"%ld%09ld\", \"", in_frame.tv.tv_sec, in_frame.tv.tv_usec * 1000 + log_line_cnt);
       strcat(post_buff, entry_buff);
       strcat(post_buff, in_frame.log_line);
       strcat(post_buff, stream_footer);
-      strcat(post_buff, "]}");
+    }
 
+    time(&now);
+    if (log_line_cnt && (strlen(post_buff) > JSON_BUFF_SIZE - LOG_LINE_SIZE * 2 || now - prev_now > 1)) {
+      strcat(post_buff, "]}");
       send_data(post_buff);
+      sprintf(post_buff, "{\"streams\": [%s", stream_header);
+      log_line_cnt = 0;
+      prev_now = now;
     }
   }
 }

@@ -13,7 +13,7 @@
 #define LABELS_NUM 3
 #define LABEL_SIZE 16 + 1
 #define LOG_LINE_SIZE 1024 + 1
-#define JSON_BUFF_SIZE 2048
+#define JSON_BUFF_SIZE 32768
 #define ENTRY_BUFF_SIZE 128
 
 typedef struct {
