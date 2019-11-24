@@ -8,6 +8,10 @@
 #include <string.h>
 
 static const char *TAG = "loki";
+static const char *stream_header = "{\"stream\": {\"emitter\": \"" EMITTER_LABEL "\", \"job\": \"" JOB_LABEL "\"";
+static const char *stream_values_header = "}, \"values\":[[";
+static const char *stream_values_delimiter = "\"], [";
+static const char *stream_footer = "\"]]}";
 const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
 static log_data_t in_frame;
 static char post_buff[JSON_BUFF_SIZE];
@@ -43,8 +47,32 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt) {
   return ESP_OK;
 }
 
-void send_data_task(void *arg) {
+void send_data(char *post_buff) {
   int len, read_len, status = 0;
+  ESP_LOGD(TAG, "POST body: %s", post_buff);
+  esp_http_client_config_t config = {
+    .url = SERVER_URL,
+    .event_handler = _http_event_handle,
+    .method = HTTP_METHOD_POST,
+  };
+  esp_http_client_handle_t client = esp_http_client_init(&config);
+  esp_http_client_set_header(client, "Content-Type", "application/json");
+  len = strlen(post_buff);
+  esp_http_client_open(client, len);
+  esp_http_client_write(client, post_buff, len);
+  len = esp_http_client_fetch_headers(client);
+  status = esp_http_client_get_status_code(client);
+  if (status != 204) {
+    read_len = esp_http_client_read(client, post_buff, len);
+    post_buff[read_len] = '\0';
+    ESP_LOGE(TAG, "%d: %s", status, read_len > 0 ? post_buff:"error");
+  } else {
+    ESP_LOGD(TAG, "Status = %d", status);
+  }
+  esp_http_client_cleanup(client);
+}
+
+void send_data_task(void *arg) {
   BaseType_t xStatus;
   while(1){
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
@@ -63,39 +91,21 @@ void send_data_task(void *arg) {
       //     }
       //   ]
       // }
-      sprintf(post_buff, "{\"streams\": [{\"stream\": {\"emitter\": \"" EMITTER_LABEL "\", \"job\": \"" JOB_LABEL "\"");
+      sprintf(post_buff, "{\"streams\": [%s", stream_header);
       for (int i = 0; i < LABELS_NUM; i++) {
         if (in_frame.labels[i][0] != '\0') {
           sprintf(entry_buff, ", \"%s\": \"%s\"", in_frame.labels[i], in_frame.labels[i + LABELS_NUM]);
           strcat(post_buff, entry_buff);
         }
       }
-      strcat(post_buff, "}, \"values\":[[");
+      strcat(post_buff, stream_values_header);
       sprintf(entry_buff, "\"%ld%ld000\", \"", in_frame.tv.tv_sec, in_frame.tv.tv_usec);
       strcat(post_buff, entry_buff);
       strcat(post_buff, in_frame.log_line);
-      strcat(post_buff, "\"]]}]}");
-      ESP_LOGV(TAG, "POST body: %s", post_buff);
-      esp_http_client_config_t config = {
-        .url = SERVER_URL,
-        .event_handler = _http_event_handle,
-        .method = HTTP_METHOD_POST,
-      };
-      esp_http_client_handle_t client = esp_http_client_init(&config);
-      esp_http_client_set_header(client, "Content-Type", "application/json");
-      len = strlen(post_buff);
-      esp_http_client_open(client, len);
-      esp_http_client_write(client, post_buff, len);
-      len = esp_http_client_fetch_headers(client);
-      status = esp_http_client_get_status_code(client);
-      if (status != 204) {
-        read_len = esp_http_client_read(client, post_buff, len);
-        post_buff[read_len] = '\0';
-        ESP_LOGE(TAG, "%d: %s", status, read_len > 0 ? post_buff:"error");
-      } else {
-        ESP_LOGD(TAG, "Status = %d", status);
-      }
-      esp_http_client_cleanup(client);
+      strcat(post_buff, stream_footer);
+      strcat(post_buff, "]}");
+
+      send_data(post_buff);
     }
   }
 }
