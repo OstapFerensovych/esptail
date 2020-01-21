@@ -9,6 +9,8 @@
 #include "string.h"
 #include "cJSON.h"
 
+#include "store.h"
+
 static const char *TAG = "WS";
 #define SCRATCH_BUFSIZE (1024)
 
@@ -32,6 +34,7 @@ httpd_uri_t config_post = {
 httpd_handle_t start_webserver() {
   ESP_LOGI(TAG, "Starting web server");
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+  config.stack_size = 32768;
   config.uri_match_fn = httpd_uri_match_wildcard;
 
   httpd_handle_t server = NULL;
@@ -48,9 +51,8 @@ void stop_webserver(httpd_handle_t server) {
   httpd_stop(server);
 }
 
-static esp_err_t index_get_handler(httpd_req_t *req)
-{
-  if(strcmp(req->uri, "/scan") == 0){
+static esp_err_t index_get_handler(httpd_req_t *req) {
+  if (strcmp(req->uri, "/scan") == 0) {
     uint16_t ap_num = 0;
     wifi_scan_config_t scan_config = {
       .ssid = NULL,
@@ -82,7 +84,7 @@ static esp_err_t index_get_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "image/png");
     httpd_resp_send(req, (const char *)esp_tail_png_start, esp_tail_png_size);
   }
-  else if (strcmp(req->uri, "/") == 0){
+  else if (strcmp(req->uri, "/") == 0) {
     extern const unsigned char index_html_start[] asm("_binary_index_html_start");
     extern const unsigned char index_html_end[]   asm("_binary_index_html_end");
     const size_t index_html_size = (index_html_end - index_html_start);
@@ -96,8 +98,7 @@ static esp_err_t index_get_handler(httpd_req_t *req)
   return ESP_OK;
 }
 
-static esp_err_t post_handler(httpd_req_t *req)
-{
+static esp_err_t post_handler(httpd_req_t *req) {
   int total_len = req->content_len;
   int cur_len = 0;
   char buf[SCRATCH_BUFSIZE];
@@ -118,19 +119,23 @@ static esp_err_t post_handler(httpd_req_t *req)
   buf[total_len] = '\0';
 
   cJSON *root = cJSON_Parse(buf);
-  char* wifi_ssid = cJSON_GetObjectItem(root, "ssid")->valuestring;
-  char* wifi_pass = cJSON_GetObjectItem(root, "key")->valuestring;
-  char* loki_url = cJSON_GetObjectItem(root, "lokiurl")->valuestring;
-  char* loki_login = cJSON_GetObjectItem(root, "lokilogin")->valuestring;
-  char* loki_pass = cJSON_GetObjectItem(root, "lokipass")->valuestring;
+  loki_cfg_t loki_cfg;
+  strcpy(sta_ssid, cJSON_GetObjectItem(root, "ssid")->valuestring);
+  strcpy(sta_password, cJSON_GetObjectItem(root, "key")->valuestring);
+  wifi_save_settings();
+  strcpy(loki_cfg.url, cJSON_GetObjectItem(root, "lokiurl")->valuestring);
+  strcpy(loki_cfg.username, cJSON_GetObjectItem(root, "lokilogin")->valuestring);
+  strcpy(loki_cfg.password, cJSON_GetObjectItem(root, "lokipass")->valuestring);
+  set_loki_config(loki_cfg);
 
-  ESP_LOGI(TAG, "SSID: %s", wifi_ssid);
-  ESP_LOGI(TAG, "PASS: %s", wifi_pass);
-  ESP_LOGI(TAG, "Loki URL: %s", loki_url);
-  ESP_LOGI(TAG, "Loki Login: %s", loki_login);
-  ESP_LOGI(TAG, "Loki Passw: %s", loki_pass);
+  ESP_LOGI(TAG, "SSID: %s", sta_ssid);
+  ESP_LOGI(TAG, "PASS: %s", sta_password);
+  ESP_LOGI(TAG, "Loki URL: %s", loki_cfg.url);
+  ESP_LOGI(TAG, "Loki Login: %s", loki_cfg.username);
+  ESP_LOGI(TAG, "Loki Passw: ******");
 
   const char resp[] = "Done. Rebooting...";
   httpd_resp_send(req, resp, strlen(resp));
+  esp_restart();
   return ESP_OK;
 }

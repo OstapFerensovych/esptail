@@ -14,6 +14,7 @@
 #include "loki.h"
 #include "serial.h"
 #include "webconfig.h"
+#include "store.h"
 
 #define ESP_WIFI_SSID "SSID"
 #define ESP_WIFI_PASS "passphrase"
@@ -38,7 +39,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       esp_wifi_connect();
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
-      ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+      ESP_LOGI(TAG, "got ip: %s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
       s_retry_num = 0;
       if (*server == NULL) {
           *server = start_webserver();
@@ -93,13 +94,21 @@ void wifi_init_ap_sta(void *arg) {
     },
   };
 
+  if (wifi_load_settings() == ESP_OK) {
+    if (strcmp(sta_ssid, "")) {
+      ESP_LOGD(TAG, "saved network '%s' found, connecting...", sta_ssid);
+      strcpy((char *)wifi_sta_config.sta.ssid, (char *)sta_ssid);
+      strcpy((char *)wifi_sta_config.sta.password, (char *)sta_password);
+
+    }
+  }
+
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
   ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_ap_config));
   ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_sta_config));
   ESP_ERROR_CHECK(esp_wifi_start());
 
-  ESP_LOGI(TAG, "wifi_init_sta finished.");
-  ESP_LOGI(TAG, "connect to ap SSID:%s", ESP_WIFI_SSID);
+  ESP_LOGI(TAG, "connect to ap SSID: %s", wifi_sta_config.sta.ssid);
 }
 
 void app_main() {
@@ -115,6 +124,7 @@ void app_main() {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
+  store_init();
   // Connect to wifi
   wifi_init_ap_sta(&server);
   xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);

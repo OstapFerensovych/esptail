@@ -1,4 +1,4 @@
-set(COMPONENT_SRCS "main.c" "utils.c" "serial.c" "loki.c" "webconfig.c")
+set(COMPONENT_SRCS "main.c" "utils.c" "serial.c" "loki.c" "store.c" "webconfig.c")
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 
 set(COMPONENT_EMBED_FILES "esp-tail.png")
