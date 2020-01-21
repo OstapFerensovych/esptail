@@ -29,8 +29,8 @@ httpd_uri_t config_post = {
   .user_ctx = NULL
 };
 
-httpd_handle_t start_webserver()
-{
+httpd_handle_t start_webserver() {
+  ESP_LOGI(TAG, "Starting web server");
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.uri_match_fn = httpd_uri_match_wildcard;
 
@@ -43,8 +43,8 @@ httpd_handle_t start_webserver()
   return server;
 }
 
-void stop_webserver(httpd_handle_t server)
-{
+void stop_webserver(httpd_handle_t server) {
+  ESP_LOGI(TAG, "Stoping web server");
   httpd_stop(server);
 }
 

@@ -46,19 +46,21 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED: {
-      if (*server) {
-          stop_webserver(*server);
-          *server = NULL;
-      }
       if (s_retry_num < ESP_MAXIMUM_RETRY) {
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         s_retry_num++;
-        ESP_LOGI(TAG,"retry to connect to the AP");
+        ESP_LOGI(TAG, "retry to connect to the AP");
       }
-      ESP_LOGI(TAG,"connect to the AP fail\n");
+      ESP_LOGI(TAG, "connect to the AP fail\n");
       break;
     }
+    case SYSTEM_EVENT_AP_START:
+      if (*server == NULL) {
+        *server = start_webserver();
+      }
+      ESP_LOGI(TAG, "AP started");
+      break;
     default:
         break;
   }
