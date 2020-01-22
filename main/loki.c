@@ -78,6 +78,7 @@ void send_data(char *post_buff) {
   len = esp_http_client_fetch_headers(client);
   status = esp_http_client_get_status_code(client);
   if (status != 204) {
+    ESP_LOGW(TAG, "POST body: %s", post_buff);
     read_len = esp_http_client_read(client, post_buff, len);
     post_buff[read_len] = '\0';
     ESP_LOGE(TAG, "%d: %s", status, read_len > 0 ? post_buff:"error");
@@ -89,6 +90,9 @@ void send_data(char *post_buff) {
 
 void send_data_task(void *arg) {
   unsigned int log_line_cnt = 0;
+  unsigned int log_time_shift = 0;
+  unsigned long int prev_log_usec = 0;
+  unsigned long int new_log_usec = 0;
   time_t now, prev_now;
   BaseType_t xStatus;
   char mac_id[13] = "";
@@ -118,6 +122,8 @@ void send_data_task(void *arg) {
       if (log_line_cnt) {
         strcat(post_buff, ", ");
         strcat(post_buff, stream_header);
+        sprintf(entry_buff, ", \"hwid\": \"%s\", \"iname\": \"%s\"", mac_id, _config.name);
+        strcat(post_buff, entry_buff);
       }
       log_line_cnt++;
       for (int i = 0; i < LABELS_NUM; i++) {
@@ -127,7 +133,13 @@ void send_data_task(void *arg) {
         }
       }
       strcat(post_buff, stream_values_header);
-      sprintf(entry_buff, "\"%ld%09ld\", \"", in_frame.tv.tv_sec, in_frame.tv.tv_usec * 1000 + log_line_cnt);
+      new_log_usec = (unsigned long int)in_frame.tv.tv_sec * 1000000 + in_frame.tv.tv_usec;
+      if (prev_log_usec < new_log_usec) {
+        prev_log_usec = new_log_usec;
+        log_time_shift = 0;
+      }
+      log_time_shift++;
+      sprintf(entry_buff, "\"%ld%09ld\", \"", in_frame.tv.tv_sec, in_frame.tv.tv_usec * 1000 + log_time_shift);
       strcat(post_buff, entry_buff);
       strcat(post_buff, in_frame.log_line);
       strcat(post_buff, stream_footer);
@@ -137,7 +149,7 @@ void send_data_task(void *arg) {
     if (log_line_cnt && (strlen(post_buff) > JSON_BUFF_SIZE - LOG_LINE_SIZE * 2 || now - prev_now > 1)) {
       strcat(post_buff, "]}");
       send_data(post_buff);
-      sprintf(post_buff, "{\"streams\": [%s", stream_header);
+      sprintf(post_buff, "{\"streams\": [%s, \"hwid\": \"%s\", \"iname\": \"%s\"", stream_header, mac_id, _config.name);
       log_line_cnt = 0;
       prev_now = now;
     }
