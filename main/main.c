@@ -44,9 +44,16 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       }
       ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
       s_retry_num = 0;
+      if (*server == NULL) {
+          *server = start_webserver();
+      }
       xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED: {
+      if (*server) {
+          stop_webserver(*server);
+          *server = NULL;
+      }
       if (s_retry_num < ESP_MAXIMUM_RETRY) {
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
