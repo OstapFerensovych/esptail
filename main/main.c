@@ -38,18 +38,15 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       esp_wifi_connect();
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
-      ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-      s_retry_num = 0;
-      if (*server == NULL) {
-          *server = start_webserver();
-      }
-      xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-      break;
-    case SYSTEM_EVENT_STA_DISCONNECTED: {
       if (*server) {
           stop_webserver(*server);
           *server = NULL;
       }
+      ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+      s_retry_num = 0;
+      xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED: {
       if (s_retry_num < ESP_MAXIMUM_RETRY) {
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
@@ -58,6 +55,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       }
       ESP_LOGI(TAG,"connect to the AP fail\n");
       break;
+    }
+    case SYSTEM_EVENT_AP_STACONNECTED: {
+      if (*server == NULL) {
+          *server = start_webserver();
+      }
     }
     default:
         break;

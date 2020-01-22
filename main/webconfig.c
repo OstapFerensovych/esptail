@@ -37,15 +37,17 @@ httpd_handle_t start_webserver()
   httpd_handle_t server = NULL;
 
   if (httpd_start(&server, &config) == ESP_OK) {
-    httpd_register_uri_handler(server, &uri_get);
-    httpd_register_uri_handler(server, &config_post);
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_get));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_post));
   }
+  ESP_LOGI(TAG, "WebConfig Started.");
   return server;
 }
 
 void stop_webserver(httpd_handle_t server)
 {
   httpd_stop(server);
+  ESP_LOGI(TAG, "WebConfig Stopped.");
 }
 
 static esp_err_t index_get_handler(httpd_req_t *req)
