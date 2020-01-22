@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
+#include "esp_system.h"
 
 #include <string.h>
 #include <time.h>
@@ -12,7 +13,7 @@
 static const char *TAG = "loki";
 static const char *stream_header = "{\"stream\": {\"emitter\": \"" EMITTER_LABEL "\", \"job\": \"" JOB_LABEL "\"";
 static const char *stream_values_header = "}, \"values\":[[";
-static const char *stream_values_delimiter = "\"], [";
+// static const char *stream_values_delimiter = "\"], [";
 static const char *stream_footer = "\"]]}";
 const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
 static log_data_t in_frame;
@@ -90,7 +91,12 @@ void send_data_task(void *arg) {
   unsigned int log_line_cnt = 0;
   time_t now, prev_now;
   BaseType_t xStatus;
-  sprintf(post_buff, "{\"streams\": [%s", stream_header);
+  char mac_id[13] = "";
+  uint8_t mac[6] = {0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
+  ESP_ERROR_CHECK(esp_read_mac(mac, 0));
+  sprintf(mac_id, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  loki_cfg_t _config = get_loki_config();
+  sprintf(post_buff, "{\"streams\": [%s, \"hwid\": \"%s\", \"iname\": \"%s\"", stream_header, mac_id, _config.name);
   time(&prev_now);
   while(1){
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
