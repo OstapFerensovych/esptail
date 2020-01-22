@@ -26,3 +26,24 @@ int remove_vt100(int in_size, char *in, int out_size, char *out) {
   }
   return o;
 }
+
+int replace_tabs(int in_size, char *in, int out_size, char *out) {
+  int o = 0;
+  for (int j = 0; j < in_size; j++) {
+    if (in[j] == '\t') {
+      if (o + 4 < out_size) {
+        for (int r = 0; r < 4; r++) {
+          out[o] = ' ';
+          o++;
+        }
+      }
+      continue;
+    } else if (o < out_size) {
+      out[o] = in[j];
+      o++;
+    } else {
+      break;
+    }
+  }
+  return o;
+}
