@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "nvs_flash.h"
+#include "esp_http_client.h"
 
 #include "store.h"
 
@@ -13,7 +14,7 @@ static const char store_nvs_namespace[] = "esptail_store";
 char sta_ssid[32] = "";
 char sta_password[64] = "";
 SemaphoreHandle_t store_mutex = NULL;
-loki_cfg_t _curr_config = { .url="", .username="", .password="" };
+loki_cfg_t _curr_config = { .transport=HTTP_TRANSPORT_OVER_TCP, .host="", .port=80, .username="", .password="", .name="esp" };
 
 bool lock_store(TickType_t xTicksToWait) {
   if (!store_mutex) store_mutex = xSemaphoreCreateMutex();
@@ -153,7 +154,7 @@ esp_err_t _loki_config_load() {
 }
 
 loki_cfg_t get_loki_config() {
-  loki_cfg_t _config = { .url="", .username="", .password="" };
+  loki_cfg_t _config = { .transport=HTTP_TRANSPORT_OVER_TCP, .host="", .port=80, .username="", .password="", .name="esp" };
   size_t sz = sizeof(loki_cfg_t);
   if (lock_store(portMAX_DELAY)) {
     memcpy(&_config, &_curr_config, sz);

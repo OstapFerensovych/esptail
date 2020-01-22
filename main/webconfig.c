@@ -8,6 +8,7 @@
 #include "esp_wifi.h"
 #include "string.h"
 #include "cJSON.h"
+#include "esp_http_client.h"
 
 #include "store.h"
 
@@ -123,16 +124,24 @@ static esp_err_t post_handler(httpd_req_t *req) {
   strcpy(sta_ssid, cJSON_GetObjectItem(root, "ssid")->valuestring);
   strcpy(sta_password, cJSON_GetObjectItem(root, "key")->valuestring);
   wifi_save_settings();
-  strcpy(loki_cfg.url, cJSON_GetObjectItem(root, "lokiurl")->valuestring);
+  char *transport_str = cJSON_GetObjectItem(root, "lokitransport")->valuestring;
+  if (!strcmp(transport_str, "tls")) loki_cfg.transport = HTTP_TRANSPORT_OVER_SSL;
+  else loki_cfg.transport = HTTP_TRANSPORT_OVER_TCP;
+  strcpy(loki_cfg.host, cJSON_GetObjectItem(root, "lokihost")->valuestring);
+  char *port_str = cJSON_GetObjectItem(root, "lokiport")->valuestring;
+  if (strcmp(port_str, "")) loki_cfg.port = atoi(port_str);
+  else loki_cfg.port = 80; 
   strcpy(loki_cfg.username, cJSON_GetObjectItem(root, "lokilogin")->valuestring);
   strcpy(loki_cfg.password, cJSON_GetObjectItem(root, "lokipass")->valuestring);
+  strcpy(loki_cfg.name, cJSON_GetObjectItem(root, "lokiname")->valuestring);
   set_loki_config(loki_cfg);
 
   ESP_LOGI(TAG, "SSID: %s", sta_ssid);
-  ESP_LOGI(TAG, "PASS: %s", sta_password);
-  ESP_LOGI(TAG, "Loki URL: %s", loki_cfg.url);
+  ESP_LOGI(TAG, "Loki Transport: %s", loki_cfg.transport == 2 ? "https" : "http");
+  ESP_LOGI(TAG, "Loki Host: %s", loki_cfg.host);
+  ESP_LOGI(TAG, "Loki Port: %d", loki_cfg.port);
   ESP_LOGI(TAG, "Loki Login: %s", loki_cfg.username);
-  ESP_LOGI(TAG, "Loki Passw: ******");
+  ESP_LOGI(TAG, "Loki Instance: %s", loki_cfg.name);
 
   const char resp[] = "Done. Rebooting...";
   httpd_resp_send(req, resp, strlen(resp));

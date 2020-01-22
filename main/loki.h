@@ -6,7 +6,7 @@
 
 #include <sys/time.h>
 
-#define SERVER_URL "http://172.16.1.55:3100/loki/api/v1/push"
+#define LOKI_PATH "/loki/api/v1/push"
 #define EMITTER_LABEL "esploki"
 #define JOB_LABEL "uarttail"
 

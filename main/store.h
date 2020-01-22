@@ -3,10 +3,15 @@
 
 #include "freertos/FreeRTOS.h"
 
+#include "esp_http_client.h"
+
 typedef struct loki_cfg {
-  char url[512];
+  esp_http_client_transport_t transport;
+  char host[512];
+  int port;
   char username[64];
   char password[64];
+  char name[128];
 } loki_cfg_t;
 
 extern char sta_ssid[32];

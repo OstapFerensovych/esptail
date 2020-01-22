@@ -172,9 +172,15 @@ form{
       </fieldset>
       <fieldset>
         <legend>Loki Settings</legend>
-        <div><label for="url">Host URL </label><div class="t"><input type="text" name="lokiurl"></div></div>
+        <div>
+          <label for="transport">Transport </label>
+          <div class="t"><select name="lokitransport"><option value="tcp">HTTP</option><option value="tls">HTTPS</option></select></div>
+        </div>
+        <div><label for="host">Host </label><div class="t"><input type="text" name="lokihost"></div></div>
+        <div><label for="port">Port </label><div class="t"><input type="text" name="lokiport"></div></div>
         <div><label for="lokilogin">Login </label><div class="t"><input type="text" name="lokilogin"></div></div>
         <div><label for="lokipass">Password </label><div class="t"><input type="password" name="lokipass"></div></div>
+        <div><label for="lokiname">Instance name </label><div class="t"><input type="text" name="lokiname"></div></div>
       </fieldset>
       <input type="submit" id="configure" value="Configure!">
     </form>

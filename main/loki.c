@@ -52,21 +52,24 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt) {
 void send_data(char *post_buff) {
   int len, read_len, status = 0;
   loki_cfg_t _config = get_loki_config();
-  if (!strcmp(_config.url, "")) {
+  if (!strcmp(_config.host, "")) {
     return;
   }
   ESP_LOGD(TAG, "POST body: %s", post_buff);
   esp_http_client_config_t config = {
-    .url = _config.url,
     .event_handler = _http_event_handle,
     .method = HTTP_METHOD_POST,
-    .auth_type = HTTP_AUTH_TYPE_BASIC,
+    .host = _config.host,
+    .port = _config.port,
+    .path = LOKI_PATH,
+    .transport_type = _config.transport,
   };
-  esp_http_client_handle_t client = esp_http_client_init(&config);
   if (strcmp(_config.username, "")) {
-    esp_http_client_set_username(client, _config.username);
-    esp_http_client_set_password(client, _config.password);
+    config.auth_type = HTTP_AUTH_TYPE_BASIC;
+    config.username = strdup(_config.username);
+    config.password = strdup(_config.password);
   }
+  esp_http_client_handle_t client = esp_http_client_init(&config);
   esp_http_client_set_header(client, "Content-Type", "application/json");
   len = strlen(post_buff);
   esp_http_client_open(client, len);
