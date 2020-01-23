@@ -130,7 +130,7 @@ static esp_err_t post_handler(httpd_req_t *req) {
   strcpy(loki_cfg.host, cJSON_GetObjectItem(root, "lokihost")->valuestring);
   char *port_str = cJSON_GetObjectItem(root, "lokiport")->valuestring;
   if (strcmp(port_str, "")) loki_cfg.port = atoi(port_str);
-  else loki_cfg.port = 80; 
+  else loki_cfg.port = loki_cfg.transport == HTTP_TRANSPORT_OVER_SSL ? 433 : 80;
   strcpy(loki_cfg.username, cJSON_GetObjectItem(root, "lokilogin")->valuestring);
   strcpy(loki_cfg.password, cJSON_GetObjectItem(root, "lokipass")->valuestring);
   strcpy(loki_cfg.name, cJSON_GetObjectItem(root, "lokiname")->valuestring);

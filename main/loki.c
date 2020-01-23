@@ -102,7 +102,7 @@ void send_data_task(void *arg) {
   loki_cfg_t _config = get_loki_config();
   sprintf(post_buff, "{\"streams\": [%s, \"hwid\": \"%s\", \"iname\": \"%s\"", stream_header, mac_id, _config.name);
   time(&prev_now);
-  while(1){
+  while(1) {
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
     if(xStatus == pdPASS) {
       // -- Make POST body
