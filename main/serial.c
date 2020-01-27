@@ -55,7 +55,11 @@ static void uart_event_task(void *pvParameters) {
     }
   }
   free(dtmp);
+  free(ctmp);
+  free(ctmp2);
   dtmp = NULL;
+  ctmp = NULL;
+  ctmp2 = NULL;
   vTaskDelete(NULL);
 }
 

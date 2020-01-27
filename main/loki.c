@@ -50,27 +50,12 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt) {
   return ESP_OK;
 }
 
-void send_data(char *post_buff) {
+void send_data(char *post_buff, esp_http_client_config_t *http_config) {
   int len, read_len, status = 0;
-  loki_cfg_t _config = get_loki_config();
-  if (!strcmp(_config.host, "")) {
-    return;
-  }
+  
   ESP_LOGD(TAG, "POST body: %s", post_buff);
-  esp_http_client_config_t config = {
-    .event_handler = _http_event_handle,
-    .method = HTTP_METHOD_POST,
-    .host = _config.host,
-    .port = _config.port,
-    .path = LOKI_PATH,
-    .transport_type = _config.transport,
-  };
-  if (strcmp(_config.username, "")) {
-    config.auth_type = HTTP_AUTH_TYPE_BASIC;
-    config.username = strdup(_config.username);
-    config.password = strdup(_config.password);
-  }
-  esp_http_client_handle_t client = esp_http_client_init(&config);
+  
+  esp_http_client_handle_t client = esp_http_client_init(http_config);
   esp_http_client_set_header(client, "Content-Type", "application/json");
   len = strlen(post_buff);
   esp_http_client_open(client, len);
@@ -102,6 +87,24 @@ void send_data_task(void *arg) {
   loki_cfg_t _config = get_loki_config();
   sprintf(post_buff, "{\"streams\": [%s, \"hwid\": \"%s\", \"iname\": \"%s\"", stream_header, mac_id, _config.name);
   time(&prev_now);
+  // Prepare client configuration
+  if (!strcmp(_config.host, "")) {
+    vTaskDelete(NULL);
+    return;
+  }
+  esp_http_client_config_t http_config = {
+    .event_handler = _http_event_handle,
+    .method = HTTP_METHOD_POST,
+    .host = _config.host,
+    .port = _config.port,
+    .path = LOKI_PATH,
+    .transport_type = _config.transport,
+  };
+  if (strcmp(_config.username, "")) {
+    http_config.auth_type = HTTP_AUTH_TYPE_BASIC;
+    http_config.username = strdup(_config.username);
+    http_config.password = strdup(_config.password);
+  }
   while(1) {
     xStatus = xQueueReceive(data0_queue, &in_frame, xTicksToWait);
     if(xStatus == pdPASS) {
@@ -148,7 +151,7 @@ void send_data_task(void *arg) {
     time(&now);
     if (log_line_cnt && (strlen(post_buff) > JSON_BUFF_SIZE - LOG_LINE_SIZE * 2 || now - prev_now > 1)) {
       strcat(post_buff, "]}");
-      send_data(post_buff);
+      send_data(post_buff, &http_config);
       sprintf(post_buff, "{\"streams\": [%s, \"hwid\": \"%s\", \"iname\": \"%s\"", stream_header, mac_id, _config.name);
       log_line_cnt = 0;
       prev_now = now;
